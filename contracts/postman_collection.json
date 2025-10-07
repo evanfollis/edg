@@ -1,0 +1,43 @@
+{
+  "info": {
+    "name": "EDG API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register Edge",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/edges"
+      }
+    },
+    {
+      "name": "Register Loop",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/loops"
+      }
+    },
+    {
+      "name": "Compute Holonomy",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/run"
+      }
+    },
+    {
+      "name": "T_ij with R/S",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/residuals"
+      }
+    },
+    {
+      "name": "Lens-Flow with regime_scope",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/step"
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+    "$id": "ironvest.translator_Tij",
+    "type": "object",
+    "required": ["translator_id","agent_i","agent_j","k_space_id","T_ref","R_ref","S_ref","factorization","diagnostics","signatures"],
+    "properties": {
+      "translator_id": {"type":"string"},
+      "agent_i": {"type":"string"},
+      "agent_j": {"type":"string"},
+      "k_space_id": {"type":"string","enum":["K/v0"]},
+      "T_ref": {"type":"string"},
+      "R_ref": {"type":"string"},
+      "S_ref": {"type":"string"},
+      "factorization": {
+        "type":"object",
+        "required":["method"],
+        "properties":{"method":{"type":"string","enum":["polar","procrustes","tikhonov_procrustes","g_polar"]}}
+      },
+      "diagnostics": {
+        "type":"object",
+        "required":["kappa","rho","roundtrip","unit_map","regime_tag"],
+        "properties":{
+          "kappa":{"type":"number"},
+          "rho":{"type":"number"},
+          "roundtrip":{"type":"number"},
+          "unit_map":{"type":"object"},
+          "regime_tag":{"type":"string"}
+        }
+      },
+      "signatures":{"type":"array","items":{"type":"string"}}
+    }
+  }
+  
