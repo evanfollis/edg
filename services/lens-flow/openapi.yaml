@@ -1,9 +1,9 @@
 openapi: 3.0.3
-info: {title: Lens-Flow, version: 1.0.0}
+info: {title: Lens-Flow, version: 1.1.0}
 paths:
   /step:
     post:
-      summary: One optimization step on Π (and optionally Uₑ) under constraints
+      summary: One optimization step on Π (and optionally Uₑ) under constraints & regime scope
       requestBody:
         required: true
         content:
@@ -17,9 +17,30 @@ paths:
                   properties:
                     minimize_loop_loss: {type: boolean}
                     preserve_modes: {type: array, items: {type: string}}
+                    report_omegaPi: {type: boolean, default: true}
+                regime_scope:
+                  type: object
+                  description: Train/validate within specified regime(s)
+                  properties:
+                    train_tags: {type: array, items: {type: string}}
+                    validate_tags: {type: array, items: {type: string}}
                 constraints:
                   type: object
                   properties:
-                    step_caps: {type: object}
-                    nonlinear_parsimony: {type: boolean}
-      responses: {'200': {description: ok}}
+                    step_caps: {type: object, description: "Per-parameter caps"}
+                    nonlinear_parsimony: {type: boolean, default: true}
+                    omegaPi_penalty_weight: {type: number, default: 1.0}
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, loop_loss_delta, omegaPi_norm_pre, omegaPi_norm_post]
+                properties:
+                  status: {type: string, enum: ["accepted","rejected","no_change"]}
+                  loop_loss_delta: {type: number}
+                  omegaPi_norm_pre: {type: number}
+                  omegaPi_norm_post: {type: number}
+                  notes: {type: string}

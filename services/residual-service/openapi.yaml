@@ -1,28 +1,53 @@
 openapi: 3.0.3
-info: {title: Residual Service, version: 1.0.0}
+info: {title: Residual Service, version: 1.1.0}
 paths:
   /residuals:
     post:
-      summary: Compute residuals r_ij with best translator T_ij
+      summary: Fit best translator T_ij, factorize into (R_ij, S_ij), compute residuals
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [agent_i, agent_j, evidence_refs]
+              required: [agent_i, agent_j, evidence_refs, k_space_id]
               properties:
                 agent_i: {type: string}
                 agent_j: {type: string}
                 evidence_refs: {type: array, items: {type: string}}
+                k_space_id: {type: string, enum: ["K/v0"]}
+                factorization_method:
+                  type: string
+                  enum: ["polar","procrustes","tikhonov_procrustes","g_polar"]
+                  default: "polar"
+                regime_tag:
+                  type: string
+                  description: Optional regime label for this computation
       responses:
         '200':
           description: ok
           content:
             application/json:
               schema:
-                type: object
-                required: [r_norm, translator_ref]
-                properties:
-                  r_norm: {type: number}
-                  translator_ref: {type: string}
+                $ref: '#/components/schemas/ResidualResult'
+components:
+  schemas:
+    ResidualResult:
+      type: object
+      required: [agent_i, agent_j, r_norm, translator_ref, Rij_ref, Sij_ref, diagnostics]
+      properties:
+        agent_i: {type: string}
+        agent_j: {type: string}
+        r_norm: {type: number}
+        translator_ref: {type: string, description: "Content-addressed T_ij artifact"}
+        Rij_ref: {type: string, description: "Reframing factor for T_ij"}
+        Sij_ref: {type: string, description: "Content shift factor for T_ij"}
+        diagnostics:
+          type: object
+          required: [kappa, method, rho, roundtrip, regime_tag]
+          properties:
+            method: {type: string}
+            kappa: {type: number}
+            rho: {type: number}
+            roundtrip: {type: number}
+            regime_tag: {type: string}
