@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info: {title: Lens-Flow, version: 1.0.0}
+paths:
+  /step:
+    post:
+      summary: One optimization step on Π (and optionally Uₑ) under constraints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targets, constraints]
+              properties:
+                targets:
+                  type: object
+                  properties:
+                    minimize_loop_loss: {type: boolean}
+                    preserve_modes: {type: array, items: {type: string}}
+                constraints:
+                  type: object
+                  properties:
+                    step_caps: {type: object}
+                    nonlinear_parsimony: {type: boolean}
+      responses: {'200': {description: ok}}

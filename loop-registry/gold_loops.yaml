@@ -1,0 +1,94 @@
+# Gold Loops Registry (Gauge-Fixing Invariants)
+version: 1.0
+status: locked
+owner: risk@ironvest
+last_updated: 2025-10-07
+
+defaults:
+  sampling:
+    frequency: D                  # daily evaluation
+    lookback_days: 5              # for percentile bounds
+  enforcement:
+    severity_on_breach: SEV-1
+    auto_revert: true
+    freeze_categories:            # freeze after breach
+      - K_space_updates           # Tier 1
+      - transport_updates         # Tier 2
+    thaw_condition:
+      consecutive_greens: 5       # days needed to thaw
+  trust_region:
+    delta_max: 0.1                # ‖Hγ − I‖₂ threshold; segment if exceeded
+    theta_max_rad: 0.5            # max per-segment rotation (rad) proxy
+    rel_log_fro_max_per_dim: 5.0e-3  # continuity bound scaled by dim
+
+loops:
+
+  - id: gamma_PCP
+    name: Put-Call Parity Loop
+    description: Spot → Forward via carry → Synthetic via options → Spot
+    regime_tags: [liquid, options, carry]
+    units: bps_of_implied_vol_residual
+    bound:
+      type: percentile
+      window_days: 5
+      percentile: 99
+      threshold_bps: 1
+    measure:
+      curvature: true
+      torsion: true
+      closure: true
+    trust_region: *defaults.trust_region
+
+  - id: gamma_CIP
+    name: Covered Interest Parity Loop
+    description: FX spot → FX fwd via rates → Return to spot via funding
+    regime_tags: [fx, rates, funding]
+    units: bps_of_CIP_basis
+    bound:
+      type: percentile
+      window_days: 5
+      percentile: 99
+      threshold_bps: 2
+    measure:
+      curvature: true
+      torsion: true
+      closure: true
+    trust_region: *defaults.trust_region
+
+  - id: gamma_Taxonomy
+    name: Industry Code Round-trip
+    description: GICS → Internal Taxonomy → GICS
+    regime_tags: [taxonomy, mapping, data_vendor]
+    units: euclidean_norm
+    bound:
+      type: absolute
+      threshold: 1.0e-5
+    measure:
+      curvature: true
+      torsion: true
+      closure: true
+    trust_region: *defaults.trust_region
+
+  - id: gamma_Quant_PM_identity
+    name: Quant ↔ PM Identity (no-op)
+    description: Quant → PM (zero-alpha, zero-constraints) → Quant
+    regime_tags: [internal, identity, governance]
+    units: frobenius_norm_of_log
+    bound:
+      type: absolute
+      threshold: 1.0e-4   # ‖log Hγ‖_F
+    measure:
+      curvature: true
+      torsion: true
+      closure: true
+    trust_region: *defaults.trust_region
+
+enforcement_policy:
+  sev1:
+    quorum: [HeadOfRisk, ModelRiskOfficer]     # 2-of-2 Break-Glass revert
+    mttd_minutes: 5
+    mttr_minutes: 30
+  sev2:
+    quorum: [RiskLead, PolicyLead, HeadQuant, ModelRiskOfficer]  # 3-of-4
+    mttd_hours: 4
+    mttr_business_days: 2

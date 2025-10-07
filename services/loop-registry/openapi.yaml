@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info: {title: Loop Registry, version: 1.0.0}
+paths:
+  /loops:
+    get: {summary: List loops, responses: {'200': {description: ok}}}
+    post:
+      summary: Create/update loop
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/Loop'}}}
+      responses: {'201': {description: created}}
+components:
+  schemas:
+    Loop:
+      $ref: '../../../contracts/schemas/loop.schema.json'

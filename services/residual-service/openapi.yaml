@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info: {title: Residual Service, version: 1.0.0}
+paths:
+  /residuals:
+    post:
+      summary: Compute residuals r_ij with best translator T_ij
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_i, agent_j, evidence_refs]
+              properties:
+                agent_i: {type: string}
+                agent_j: {type: string}
+                evidence_refs: {type: array, items: {type: string}}
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [r_norm, translator_ref]
+                properties:
+                  r_norm: {type: number}
+                  translator_ref: {type: string}

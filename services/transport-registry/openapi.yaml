@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info: {title: Transport Registry, version: 1.0.0}
+paths:
+  /edges:
+    post:
+      summary: Register or update a transport edge Uₑ
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TransportEdge'}}}
+      responses:
+        '201': {description: created}
+        '400': {description: schema/diagnostic violation}
+    get:
+      summary: List edges
+      responses:
+        '200': {description: ok}
+  /edges/{edge_id}:
+    get:
+      summary: Get edge by id
+      parameters: [{name: edge_id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: ok}}
+components:
+  schemas:
+    TransportEdge:
+      $ref: '../../../contracts/schemas/transport_edge.schema.json'

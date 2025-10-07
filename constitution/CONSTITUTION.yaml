@@ -1,0 +1,25 @@
+version: 1.0
+tiers:
+  T1: ["K_space", "metric_g", "gold_loops"]
+  T2: ["transports_Ue", "budgets_epsilon_eta", "projector_modes"]
+  T3: ["lenses_Pi", "residual_translators_Tij"]
+budgets:
+  epsilon: 0.35
+  eta: 0.05
+  lambda_complexity: 1.0
+numerics:
+  kappa_max: 500
+  tau_roundtrip: 0.02
+  rho_procrustes: 0.01
+  delta_log_trust: 0.10
+  theta_max_rad: 0.50
+  rel_log_fro_per_dim: 0.005
+nonlinear_penalty:
+  alpha_S: 1.0
+  alpha_cond: 0.1
+  kappa_S: 100
+quorum:
+  sev1: {break_glass: ["HeadOfRisk","ModelRiskOfficer"], type: "2-of-2"}
+  sev2: {roles: ["RiskLead","PolicyLead","HeadQuant","ModelRiskOfficer"], type: "3-of-4"}
+freeze_on_gold_breach: ["K_space_updates","transport_updates"]
+thaw_after_green_days: 5

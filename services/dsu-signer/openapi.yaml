@@ -1,0 +1,31 @@
+openapi: 3.0.3
+info: {title: DSU Signer, version: 1.0.0}
+paths:
+  /sign:
+    post:
+      summary: Sign an artifact (content-addressed)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [artifact_ref, tier]
+              properties:
+                artifact_ref: {type: string}
+                tier: {type: string, enum: ["T1","T2","T3"]}
+      responses:
+        '200': {description: ok}
+  /verify:
+    post:
+      summary: Verify signatures and quorum
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [artifact_ref]
+              properties:
+                artifact_ref: {type: string}
+      responses: {'200': {description: ok}}

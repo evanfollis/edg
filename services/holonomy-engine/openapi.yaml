@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info: {title: Holonomy Engine, version: 1.0.0}
+paths:
+  /run:
+    post:
+      summary: Compute holonomy and loop metrics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [loop_id, state_ref, edge_ids]
+              properties:
+                loop_id: {type: string}
+                state_ref: {type: string}
+                edge_ids: {type: array, items: {type: string}}
+      responses:
+        '200':
+          description: ok
+          content: {application/json: {schema: {$ref: '#/components/schemas/HResult'}}}
+components:
+  schemas:
+    HResult:
+      $ref: '../../../contracts/schemas/holonomy_result.schema.json'
