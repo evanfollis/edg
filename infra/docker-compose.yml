@@ -1,0 +1,53 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDATABASE}
+    ports: ["5432:5432"]
+    healthcheck: {test: ["CMD-SHELL","pg_isready -U ${PGUSER}"], interval: 5s, retries: 10}
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${OBJECT_STORE_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${OBJECT_STORE_SECRET_KEY}
+    ports: ["9000:9000","9001:9001"]
+
+  transport-registry:
+    build: ./services/transport-registry
+    environment: [PGHOST,PGUSER,PGPASSWORD,PGDATABASE,PGPORT,OBJECT_STORE_ENDPOINT,OBJECT_STORE_BUCKET]
+    ports: ["${TRANSPORT_REGISTRY_PORT}:8080"]
+    depends_on: [postgres, minio]
+
+  holonomy-engine:
+    build: ./services/holonomy-engine
+    ports: ["${HOLONOMY_ENGINE_PORT}:8080"]
+    depends_on: [transport-registry]
+
+  loop-registry:
+    build: ./services/loop-registry
+    ports: ["${LOOP_REGISTRY_PORT}:8080"]
+    depends_on: [postgres]
+
+  residual-service:
+    build: ./services/residual-service
+    ports: ["${RESIDUAL_SERVICE_PORT}:8080"]
+    depends_on: [transport-registry]
+
+  lens-flow:
+    build: ./services/lens-flow
+    ports: ["${LENS_FLOW_PORT}:8080"]
+    depends_on: [holonomy-engine]
+
+  dsu-signer:
+    build: ./services/dsu-signer
+    ports: ["${DSU_SIGNER_PORT}:8080"]
+
+  dashboard-api:
+    build: ./services/dashboard-api
+    ports: ["${DASHBOARD_API_PORT}:8080"]
+    depends_on: [holonomy-engine, loop-registry, residual-service]

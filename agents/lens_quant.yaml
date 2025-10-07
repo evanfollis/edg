@@ -1,0 +1,23 @@
+lens_id: lens_quant@1.0.0
+agent: agent:quant
+k_space_id: K/v0
+encoder:
+  type: "factor_nlp_hybrid"
+  dims_out: 768
+  ridge_alpha: 0.01
+  feature_blocks:
+    - factor_exposures.core_v3
+    - sector_onehots.gics_v2
+    - macro_drivers
+    - news_embeddings.st_vX_hash_abc123
+    - accounting_ratios
+  normalization: "rolling_zscore_2y"
+constraints:
+  step_caps:
+    frobenius_delta_max_per_week: 0.05
+governance:
+  report_omegaPi: true
+  regime_scope:
+    train_tags: ["low_vol","earnings"]
+    validate_tags: ["low_vol"]
+signatures: []   # DSU will populate

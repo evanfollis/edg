@@ -1,17 +1,18 @@
-# Observability
+# Observability — v1.1
 
 ## Metrics (Prometheus)
-- holonomy_curvature_fro{loop_id}
-- holonomy_torsion_fro{loop_id}
-- holonomy_closure_norm{loop_id}
+- holonomy_curvature_fro{loop_id,regime_tag}
+- holonomy_torsion_fro{loop_id,regime_tag}
+- holonomy_closure_norm{loop_id,regime_tag}
 - edge_kappa{edge_id}, edge_roundtrip{edge_id}, edge_rho{edge_id}
+- residual_norm{agent_i,agent_j,regime_tag}
+- translator_kappa{agent_i,agent_j}
+- lensflow_step_loss{regime_tag}
+- omegaPi_norm{agent,phase="pre|post",regime_tag}
 - gold_loop_breach_total{loop_id}
-- lensflow_step_loss
-- residual_norm{pair}
 
 ## Traces (OpenTelemetry)
-- TraceID flows: PM proposal → required loops → holonomy calc → risk gate
-- Span attributes: edge_id, dsu_ids, dataset_hashes, code_digest
+- Propagate: loop_id, regime_tag, edge_ids, dsu_ids.
 
 ## Logs
-- Structured JSON. Always include: artifact_ref, dsu_signatures, κ/τ/ρ, units, env versions.
+- Include: artifact_ref, dsu_signatures, κ/τ/ρ, units, **regime_tag**, code_digest.

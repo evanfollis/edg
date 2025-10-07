@@ -1,0 +1,17 @@
+lens_id: lens_pm@1.0.0
+agent: agent:pm
+k_space_id: K/v0
+objective:
+  type: "max_information_ratio"
+  tracking_error_max: 0.05
+  turnover_max: 0.3
+  constraints:
+    sector_bounds: true
+    position_limits: true
+    liquidity_filters: true
+gatekeeping:
+  require_gold_loops_green: true
+  require_risk_signoff: true
+outputs:
+  unit_map_out: "weights"
+signatures: []   # DSU will populate
