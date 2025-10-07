@@ -1,0 +1,23 @@
+{
+    "$id":"ironvest.holonomy_result",
+    "type":"object",
+    "required":["loop_id","H_ref","curvature_fro","torsion_fro","closure_norm","edge_attribution","segments","dim","timestamp"],
+    "properties":{
+      "loop_id":{"type":"string"},
+      "H_ref":{"type":"string"},
+      "curvature_fro":{"type":"number"},
+      "torsion_fro":{"type":"number"},
+      "closure_norm":{"type":"number"},
+      "wilson_trace":{"type":"number"},
+      "wilson_spectrum":{"type":"array","items":{"type":"number"}},
+      "edge_attribution":{
+        "type":"array",
+        "items":{"type":"array","items":[{"type":"string"},{"type":"number"}], "minItems":2, "maxItems":2}
+      },
+      "segments":{"type":"integer"},
+      "dim":{"type":"integer"},
+      "regime_tag":{"type":"string"},
+      "timestamp":{"type":"string","format":"date-time"}
+    }
+  }
+  

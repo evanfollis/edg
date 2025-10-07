@@ -1,0 +1,9 @@
+{
+    "loop_id":"gamma_Quant_PM_identity",
+    "edges":["quant->pm@1.0.0","pm->quant@1.0.0"],
+    "closure_metric":"frobenius",
+    "sampling":{"rebalance_freq":"D","min_len":2},
+    "trust_region":{"delta_max":0.1,"theta_max_rad":0.5,"rel_log_fro_max_per_dim":0.005},
+    "regime_tags":["internal","identity","governance"]
+  }
+  

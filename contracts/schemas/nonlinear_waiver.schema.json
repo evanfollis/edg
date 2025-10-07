@@ -1,0 +1,14 @@
+{
+    "$id":"ironvest.nonlinear_waiver",
+    "type":"object",
+    "required":["stability_rank_pct","windows","oos_metric","oos_improvement_min","gold_loop_ok","artifact_refs"],
+    "properties":{
+      "stability_rank_pct":{"type":"number","minimum":0,"maximum":100},
+      "windows":{"type":"integer","minimum":1},
+      "oos_metric":{"type":"string"},
+      "oos_improvement_min":{"type":"number"},
+      "gold_loop_ok":{"type":"boolean"},
+      "artifact_refs":{"type":"array","items":{"type":"string"}}
+    }
+  }
+  

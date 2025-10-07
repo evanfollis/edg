@@ -1,0 +1,21 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      IV_KAPPA_MAX: "500"
+      IV_TAU_MAX: "0.02"
+      IV_RHO_MAX: "0.01"
+      IV_DELTA_MAX: "0.10"
+      IV_THETA_MAX: "0.50"
+      IV_REL_LOG_PER_DIM: "0.005"
+      IV_KAPPA_S_MAX: "100"
+      IV_ALPHA_S: "1.0"
+      IV_ALPHA_COND: "0.1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: pip install numpy scipy jsonschema
+      - name: Run unit & schema tests
+        run: pytest ci/tests -q
