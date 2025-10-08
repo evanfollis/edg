@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 from fastapi import Response
 from prometheus_client import CollectorRegistry, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from edg_numerics import factor_edge_polar
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -30,7 +31,8 @@ g_resid = Gauge(
 
 @app.post("/residuals")
 def residuals(req: ResidualsRequest) -> Dict[str, Any]:
-    # Mock computation with deterministic values
+    # Mock computation with deterministic values; factorization method provided
+    method = req.factorization_method or "polar"
     return {
         "agent_i": req.agent_i,
         "agent_j": req.agent_j,
@@ -39,7 +41,7 @@ def residuals(req: ResidualsRequest) -> Dict[str, Any]:
         "Rij_ref": "sha256:Rij",
         "Sij_ref": "sha256:Sij",
         "diagnostics": {
-            "method": req.factorization_method or "polar",
+            "method": method,
             "kappa": 50.0,
             "rho": 0.005,
             "roundtrip": 0.012,
@@ -52,5 +54,10 @@ def residuals(req: ResidualsRequest) -> Dict[str, Any]:
 def metrics() -> Response:
     data = generate_latest(REGISTRY)
     return Response(content=data, media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/healthz")
+def healthz() -> Response:
+    return Response(status_code=204)
 
 

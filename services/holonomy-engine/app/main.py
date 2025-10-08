@@ -10,6 +10,12 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from prometheus_client import CollectorRegistry, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from edg_numerics import (
+    loop_holonomy as hn_loop_holonomy,
+    stable_logm,
+    curvature_torsion_closure_from_log,
+    rotation_angle_norm_from_log,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -84,6 +90,32 @@ def fetch_edge_dim(edge_id: str) -> int | None:
     return None
 
 
+def fetch_edge_U(edge_id: str) -> np.ndarray | None:
+    """Fetch U shape and synthesize identity matrix of appropriate dimension.
+
+    Note: weights are referenced by content-hash and not directly retrievable here; we
+    use identity as a placeholder that respects shape for trust-region-safe logging.
+    """
+    try:
+        r = requests.get(f"{TR_BASE}/edges/{edge_id}", timeout=2.0)
+        if r.status_code == 200:
+            data = r.json()
+            shape = data.get("U", {}).get("shape")
+            if isinstance(shape, list) and len(shape) == 2 and all(isinstance(x, int) for x in shape):
+                m, n = shape
+                if m == n:
+                    return np.eye(n)
+                # For non-square, return an identity-like rectangular embedding
+                mat = np.zeros((m, n))
+                k = min(m, n)
+                for i in range(k):
+                    mat[i, i] = 1.0
+                return mat
+    except Exception:
+        return None
+    return None
+
+
 def identity_metrics(dim: int) -> Dict[str, Any]:
     return {
         "curvature_fro": 0.0,
@@ -96,8 +128,15 @@ def identity_metrics(dim: int) -> Dict[str, Any]:
 
 @app.post("/run")
 def run_loop(req: RunRequest) -> Dict[str, Any]:
-    # Dim from first edge if available
+    # Dim and U map from edges
     dim = fetch_edge_dim(req.edge_ids[0]) or 64 if req.edge_ids else 64
+    U_map: Dict[str, np.ndarray] = {}
+    for eid in req.edge_ids:
+        U = fetch_edge_U(eid)
+        if U is None:
+            # fallback to square identity with inferred dim
+            U = np.eye(dim)
+        U_map[eid] = U
     # Loop metadata (trust-region + regime)
     loop_meta = fetch_loop(req.loop_id) or {}
     regime_tag = (loop_meta.get("regime_tags") or ["default"]) [0]
@@ -106,44 +145,70 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
     theta_cap = float(trust.get("theta_max_rad", THETA_MAX))
     rel_log_cap = float(trust.get("rel_log_fro_max_per_dim", REL_LOG_PER_DIM))
 
-    # Minimal placeholder: if edge pair looks like identity round-trip, emit tiny values
-    if len(req.edge_ids) >= 2 and req.edge_ids[0].startswith("quant->pm") and req.edge_ids[1].startswith("pm->quant"):
-        metrics = identity_metrics(dim)
-        result = {
-            "loop_id": req.loop_id,
-            "H_ref": "sha256:H_identity",
-            **metrics,
-            "edge_attribution": [[req.edge_ids[0], 0.5], [req.edge_ids[1], 0.5]],
-            "timestamp": "2025-10-07T15:02:11Z",
-            "regime_tag": regime_tag,
-        }
-        g_curv.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(metrics["curvature_fro"])
-        g_tors.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(metrics["torsion_fro"])
-        g_close.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(metrics["closure_norm"])
-        return result
+    # Compute holonomy and metrics using numerics lib
+    try:
+        H = hn_loop_holonomy(req.edge_ids, U_map)
+        L = stable_logm(H, delta_max=delta_cap)
+        # Segment-level checks: treat each edge transport as a segment
+        prev_L = None
+        for eid in req.edge_ids:
+            Ui = U_map[eid]
+            Li = stable_logm(Ui, delta_max=delta_cap)
+            rot_mag = rotation_angle_norm_from_log(Li)
+            if rot_mag > THETA_MAX + 1e-12:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error": {
+                            "code": "IV.NUMERIC.TRUST_REGION",
+                            "message": "Per-segment rotation exceeds θ_max.",
+                            "detail": {"theta": rot_mag, "theta_max": THETA_MAX, "edge_id": eid},
+                        }
+                    },
+                )
+            if prev_L is not None:
+                rel = float(np.linalg.norm(Li - prev_L, 'fro') / max(dim, 1))
+                if rel > REL_LOG_PER_DIM + 1e-12:
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "error": {
+                                "code": "IV.NUMERIC.TRUST_REGION",
+                                "message": "Log branch discontinuity exceeds per-dim cap.",
+                                "detail": {"rel": rel, "cap": REL_LOG_PER_DIM, "edge_id": eid},
+                            }
+                        },
+                    )
+            prev_L = Li
+        metrics = curvature_torsion_closure_from_log(L)
+    except ValueError as ve:
+        # Trust region violated; return structured error per ERRORS.md
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "IV.NUMERIC.TRUST_REGION",
+                    "message": "Loop segment outside log trust region (δ).",
+                    "detail": {"delta_max": delta_cap, "loop_id": req.loop_id},
+                }
+            },
+        ) from ve
 
     # Generic: produce small random-ish stable values
-    rng = np.random.default_rng(42)
-    curvature = float(abs(rng.normal(0.0, 1e-4)))
-    torsion = float(abs(rng.normal(0.0, 5e-5)))
-    closure = float(abs(rng.normal(0.0, 5e-5)))
     weights = [1.0 / max(len(req.edge_ids), 1)] * len(req.edge_ids)
     attribution = [[eid, w] for eid, w in zip(req.edge_ids, weights)]
     result = {
         "loop_id": req.loop_id,
         "H_ref": "sha256:H_mock",
-        "curvature_fro": curvature,
-        "torsion_fro": torsion,
-        "closure_norm": closure,
+        "curvature_fro": metrics["curvature_fro"],
+        "torsion_fro": metrics["torsion_fro"],
+        "closure_norm": metrics["closure_norm"],
         "edge_attribution": attribution,
         "segments": 1,
         "dim": dim,
         "timestamp": "2025-10-07T15:02:11Z",
         "regime_tag": regime_tag,
     }
-    # Enforce basic caps in placeholder: clamp to caps to avoid bogus breaches
-    if result["curvature_fro"] > theta_cap:
-        result["curvature_fro"] = theta_cap
     g_curv.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(result["curvature_fro"])
     g_tors.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(result["torsion_fro"])
     g_close.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(result["closure_norm"])

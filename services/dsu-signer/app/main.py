@@ -41,3 +41,8 @@ def metrics() -> Response:
     return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
 
+@app.get("/healthz")
+def healthz() -> Response:
+    return Response(status_code=204)
+
+
