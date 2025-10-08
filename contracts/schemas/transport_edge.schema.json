@@ -1,52 +1,72 @@
 {
-    "$id": "ironvest.transport_edge",
-    "type": "object",
-    "required": ["edge_id","src","dst","k_space_id","edge_type","U","factorization","unit_map","diagnostics","signatures"],
-    "properties": {
-      "edge_id": {"type":"string"},
-      "src": {"type":"string"},
-      "dst": {"type":"string"},
-      "k_space_id": {"type":"string","enum":["K/v0"]},
-      "edge_type": {"type":"string","enum":["linear","nonlinear"]},
-      "U": {
-        "type":"object",
-        "required":["shape","weights_ref","inverse_ref"],
-        "properties":{
-          "shape":{"type":"array","items":{"type":"integer"},"minItems":2,"maxItems":2},
-          "weights_ref":{"type":"string"},
-          "inverse_ref":{"type":"string"}
-        }
-      },
-      "factorization": {
-        "type":"object",
-        "required":["method","R_ref","S_ref"],
-        "properties":{
-          "method":{"type":"string","enum":["polar","procrustes","tikhonov_procrustes","g_polar"]},
-          "R_ref":{"type":"string"},
-          "S_ref":{"type":"string"},
-          "residual":{"type":"number"}
-        }
-      },
-      "unit_map":{"type":"object"},
-      "diagnostics":{
-        "type":"object",
-        "required":["kappa","roundtrip","rho"],
-        "properties":{
-          "kappa":{"type":"number"},
-          "roundtrip":{"type":"number"},
-          "rho":{"type":"number"}
-        }
-      },
-      "nonlinear_penalty":{
-        "type":"object",
-        "properties":{
-          "alpha_S":{"type":"number"},
-          "alpha_cond":{"type":"number"},
-          "kappa_S":{"type":"number"}
-        }
-      },
-      "oos_torsion_proof":{"$ref":"./nonlinear_waiver.schema.json"},
-      "signatures":{"type":"array","items":{"type":"string"}}
-    }
+  "$id": "ironvest.transport_edge",
+  "type": "object",
+  "required": [
+    "edge_id",
+    "src",
+    "dst",
+    "k_space_id",
+    "edge_type",
+    "U",
+    "factorization",
+    "unit_map",
+    "diagnostics",
+    "signatures"
+  ],
+  "properties": {
+    "edge_id": {"type": "string"},
+    "src": {"type": "string"},
+    "dst": {"type": "string"},
+    "k_space_id": {"type": "string", "enum": ["K/v0"]},
+    "edge_type": {"type": "string", "enum": ["linear", "nonlinear"]},
+    "U": {
+      "type": "object",
+      "required": ["shape", "weights_ref", "inverse_ref"],
+      "properties": {
+        "shape": {
+          "type": "array",
+          "items": {"type": "integer"},
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "weights_ref": {"type": "string"},
+        "inverse_ref": {"type": "string"}
+      }
+    },
+    "factorization": {
+      "type": "object",
+      "required": ["method", "R_ref", "S_ref"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["polar", "procrustes", "tikhonov_procrustes", "g_polar"]
+        },
+        "R_ref": {"type": "string"},
+        "S_ref": {"type": "string"},
+        "residual": {"type": "number"}
+      }
+    },
+    "unit_map": {"type": "object"},
+    "diagnostics": {
+      "type": "object",
+      "required": ["kappa", "roundtrip", "rho"],
+      "properties": {
+        "kappa": {"type": "number"},
+        "roundtrip": {"type": "number"},
+        "rho": {"type": "number"}
+      }
+    },
+    "nonlinear_penalty": {
+      "type": "object",
+      "properties": {
+        "alpha_S": {"type": "number"},
+        "alpha_cond": {"type": "number"},
+        "kappa_S": {"type": "number"}
+      }
+    },
+    "oos_torsion_proof": {"$ref": "./nonlinear_waiver.schema.json"},
+    "signatures": {"type": "array", "items": {"type": "string"}}
   }
+  
+}
   

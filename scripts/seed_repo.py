@@ -1,4 +1,7 @@
-import json, os, time, requests, numpy as np
+import json
+import os
+
+import requests
 
 BASE = "http://localhost"
 TR = f"{BASE}:{os.getenv('TRANSPORT_REGISTRY_PORT','7001')}"

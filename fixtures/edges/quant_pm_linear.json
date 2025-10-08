@@ -1,13 +1,22 @@
 {
-    "edge_id": "quant->pm@1.0.0",
-    "src": "agent:quant",
-    "dst": "agent:pm",
-    "k_space_id": "K/v0",
-    "edge_type": "linear",
-    "U": {"shape":[64,64],"weights_ref":"sha256:W","inverse_ref":"sha256:Winv"},
-    "factorization": {"method":"polar","R_ref":"sha256:R","S_ref":"sha256:S","residual":0.004},
-    "unit_map": {"in":"zscore","out":"weights"},
-    "diagnostics": {"kappa":120.0,"roundtrip":0.011,"rho":0.0},
-    "signatures": ["dsu:HeadOfRisk:dev","dsu:PolicyLead:dev"]
-  }
+  "edge_id": "quant->pm@1.0.0",
+  "src": "agent:quant",
+  "dst": "agent:pm",
+  "k_space_id": "K/v0",
+  "edge_type": "linear",
+  "U": {
+    "shape": [64, 64],
+    "weights_ref": "sha256:W",
+    "inverse_ref": "sha256:Winv"
+  },
+  "factorization": {
+    "method": "polar",
+    "R_ref": "sha256:R",
+    "S_ref": "sha256:S",
+    "residual": 0.004
+  },
+  "unit_map": {"in": "zscore", "out": "weights"},
+  "diagnostics": {"kappa": 120.0, "roundtrip": 0.011, "rho": 0.0},
+  "signatures": ["dsu:HeadOfRisk:dev", "dsu:PolicyLead:dev"]
+}
   

@@ -1,23 +1,39 @@
 {
-    "$id":"ironvest.loop",
-    "type":"object",
-    "required":["loop_id","edges","closure_metric","sampling","trust_region"],
-    "properties":{
-      "loop_id":{"type":"string"},
-      "edges":{"type":"array","items":{"type":"string"}, "minItems":2},
-      "closure_metric":{"type":"string","enum":["frobenius","euclidean_norm","bps"]},
-      "budgets":{"type":"object","properties":{"eta":{"type":"number"}}},
-      "sampling":{"type":"object","properties":{"rebalance_freq":{"type":"string"},"min_len":{"type":"integer"}}},
-      "trust_region":{
-        "type":"object",
-        "required":["delta_max","theta_max_rad","rel_log_fro_max_per_dim"],
-        "properties":{
-          "delta_max":{"type":"number"},
-          "theta_max_rad":{"type":"number"},
-          "rel_log_fro_max_per_dim":{"type":"number"}
-        }
-      },
-      "regime_tags":{"type":"array","items":{"type":"string"}}
-    }
+  "$id": "ironvest.loop",
+  "type": "object",
+  "required": ["loop_id", "edges", "closure_metric", "sampling", "trust_region"],
+  "properties": {
+    "loop_id": {"type": "string"},
+    "edges": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 2
+    },
+    "closure_metric": {
+      "type": "string",
+      "enum": ["frobenius", "euclidean_norm", "bps"]
+    },
+    "budgets": {
+      "type": "object",
+      "properties": {"eta": {"type": "number"}}
+    },
+    "sampling": {
+      "type": "object",
+      "properties": {
+        "rebalance_freq": {"type": "string"},
+        "min_len": {"type": "integer"}
+      }
+    },
+    "trust_region": {
+      "type": "object",
+      "required": ["delta_max", "theta_max_rad", "rel_log_fro_max_per_dim"],
+      "properties": {
+        "delta_max": {"type": "number"},
+        "theta_max_rad": {"type": "number"},
+        "rel_log_fro_max_per_dim": {"type": "number"}
+      }
+    },
+    "regime_tags": {"type": "array", "items": {"type": "string"}}
   }
+}
   
