@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import requests
+import boto3
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -68,6 +69,10 @@ REL_LOG_PER_DIM = float(os.getenv("IV_REL_LOG_PER_DIM", "0.005"))
 TR_BASE = os.getenv("TRANSPORT_REGISTRY_BASE", f"http://localhost:{os.getenv('TRANSPORT_REGISTRY_PORT','7001')}")
 LR_BASE = os.getenv("LOOP_REGISTRY_BASE", f"http://localhost:{os.getenv('LOOP_REGISTRY_PORT','7003')}")
 EVENT_BUS_URL = os.getenv("EVENT_BUS_URL")
+OBJ_ENDPOINT = os.getenv("OBJECT_STORE_ENDPOINT", "http://localhost:9000")
+OBJ_BUCKET = os.getenv("OBJECT_STORE_BUCKET", "edg-artifacts")
+OBJ_ACCESS = os.getenv("OBJECT_STORE_ACCESS_KEY", "minioadmin")
+OBJ_SECRET = os.getenv("OBJECT_STORE_SECRET_KEY", "minioadmin")
 
 
 def fetch_loop(loop_id: str) -> Dict[str, Any] | None:
@@ -94,29 +99,50 @@ def fetch_edge_dim(edge_id: str) -> int | None:
 
 
 def fetch_edge_U(edge_id: str) -> np.ndarray | None:
-    """Fetch U shape and synthesize identity matrix of appropriate dimension.
+    """Fetch U matrix from transport-registry and object store if available.
 
-    Note: weights are referenced by content-hash and not directly retrievable here; we
-    use identity as a placeholder that respects shape for trust-region-safe logging.
+    Falls back to identity-like matrix using declared shape when blobs are unavailable.
     """
     try:
         r = requests.get(f"{TR_BASE}/edges/{edge_id}", timeout=2.0)
-        if r.status_code == 200:
-            data = r.json()
-            shape = data.get("U", {}).get("shape")
-            if isinstance(shape, list) and len(shape) == 2 and all(isinstance(x, int) for x in shape):
-                m, n = shape
-                if m == n:
-                    return np.eye(n)
-                # For non-square, return an identity-like rectangular embedding
-                mat = np.zeros((m, n))
-                k = min(m, n)
-                for i in range(k):
-                    mat[i, i] = 1.0
-                return mat
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        Umeta = data.get("U", {})
+        shape = Umeta.get("shape")
+        if not (isinstance(shape, list) and len(shape) == 2 and all(isinstance(x, int) for x in shape)):
+            return None
+        m, n = shape
+        wref = Umeta.get("weights_ref")
+        if isinstance(wref, str) and wref.startswith("sha256:"):
+            key = wref.split(":", 1)[1]
+            try:
+                s3 = boto3.client(
+                    "s3",
+                    endpoint_url=OBJ_ENDPOINT,
+                    aws_access_key_id=OBJ_ACCESS,
+                    aws_secret_access_key=OBJ_SECRET,
+                )
+                obj = s3.get_object(Bucket=OBJ_BUCKET, Key=key)
+                blob = obj["Body"].read()
+                # Interpret as float32 row-major matrix
+                arr = np.frombuffer(blob, dtype=np.float32)
+                try:
+                    return arr.reshape((m, n))
+                except Exception:
+                    pass
+            except Exception:
+                pass
+        # Fallback identity-like
+        if m == n:
+            return np.eye(n)
+        mat = np.zeros((m, n))
+        k = min(m, n)
+        for i in range(k):
+            mat[i, i] = 1.0
+        return mat
     except Exception:
         return None
-    return None
 
 
 def publish_event(stream: str, payload: Dict[str, Any]) -> None:
@@ -214,7 +240,7 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
     # Wilson diagnostics (simple proxies)
     wilson_trace = float(np.trace(L))
     log_fro = float(np.linalg.norm(L, 'fro'))
-    result = {
+    result: Dict[str, Any] = {
         "loop_id": req.loop_id,
         "H_ref": "sha256:H_mock",
         "curvature_fro": metrics["curvature_fro"],
@@ -228,6 +254,15 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
         "regime_tag": regime_tag,
         "log_fro": log_fro,
     }
+    # Optional Wilson spectrum (feature-flag)
+    if os.getenv("FEATURE_WILSON_SPECTRUM", "false").lower() in ("1", "true", "yes"): 
+        try:
+            eigs = np.linalg.eigvals(H)
+            k = int(os.getenv("WILSON_SPECTRUM_MAX", "16"))
+            # store magnitudes for compactness; real parts suffice for demo
+            result["wilson_spectrum"] = [float(np.real(e)) for e in eigs[:k]]
+        except Exception:
+            pass
     # Schema validation before emitting
     try:
         js_validate(instance=result, schema=holonomy_schema)

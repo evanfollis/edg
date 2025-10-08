@@ -143,6 +143,7 @@ def residuals(req: ResidualsRequest) -> Dict[str, Any]:
         js_validate(instance=preview, schema=schema)
     except Exception:
         pass
+    publish_event("residual.completed", result)
     return result
 
 
@@ -235,6 +236,15 @@ def create_translator(body: Dict[str, Any]) -> Dict[str, Any]:
 
     publish_event("translator.created", body)
     return {"status": "created", "translator_id": translator_id}
+
+
+@app.get("/translators")
+def list_translators() -> List[Dict[str, Any]]:
+    if DB_ENGINE is None:
+        return []
+    with DB_ENGINE.connect() as conn:
+        rows = conn.execute(text("SELECT payload FROM translators ORDER BY translator_id"))
+        return [r[0] for r in rows]
 
 
 @app.get("/metrics")

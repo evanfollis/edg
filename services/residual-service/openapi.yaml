@@ -23,6 +23,20 @@ paths:
                 regime_tag:
                   type: string
                   description: Optional regime label for this computation
+                X_shape:
+                  type: array
+                  items: {type: integer}
+                  description: Optional inline evidence matrix shape for X (rows, cols)
+                Y_shape:
+                  type: array
+                  items: {type: integer}
+                  description: Optional inline evidence matrix shape for Y (rows, cols)
+                X_content:
+                  type: string
+                  description: Base64-encoded float32 row-major bytes for X
+                Y_content:
+                  type: string
+                  description: Base64-encoded float32 row-major bytes for Y
       responses:
         '200':
           description: ok

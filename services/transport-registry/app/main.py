@@ -14,6 +14,8 @@ import boto3
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 import requests
+import base64
+import numpy as np
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -79,6 +81,65 @@ g_presign = Gauge(
 @app.post("/edges", status_code=status.HTTP_201_CREATED)
 def register_edge(body: TransportEdgeBody) -> Dict[str, Any]:
     payload = body.dict()
+
+    # Inline artifact support: if *_content present, upload and replace with *_ref
+    def upload_bytes(data: bytes) -> str:
+        import hashlib
+
+        digest = hashlib.sha256(data).hexdigest()
+        ref = f"sha256:{digest}"
+        try:
+            s3 = boto3.client(
+                "s3",
+                endpoint_url=os.getenv("OBJECT_STORE_ENDPOINT", "http://localhost:9000"),
+                aws_access_key_id=os.getenv("OBJECT_STORE_ACCESS_KEY", "minioadmin"),
+                aws_secret_access_key=os.getenv("OBJECT_STORE_SECRET_KEY", "minioadmin"),
+            )
+            bucket = os.getenv("OBJECT_STORE_BUCKET", "edg-artifacts")
+            try:
+                s3.head_bucket(Bucket=bucket)
+            except Exception:
+                s3.create_bucket(Bucket=bucket)
+            s3.put_object(Bucket=bucket, Key=digest, Body=data)
+        except Exception:
+            pass
+        return ref
+
+    U = payload.get("U") or {}
+    if isinstance(U, dict):
+        if U.get("weights_content") and not U.get("weights_ref"):
+            try:
+                data = base64.b64decode(U["weights_content"], validate=True)
+                U["weights_ref"] = upload_bytes(data)
+                U.pop("weights_content", None)
+            except Exception:
+                pass
+        if U.get("inverse_content") and not U.get("inverse_ref"):
+            try:
+                data = base64.b64decode(U["inverse_content"], validate=True)
+                U["inverse_ref"] = upload_bytes(data)
+                U.pop("inverse_content", None)
+            except Exception:
+                pass
+        payload["U"] = U
+
+    fac = payload.get("factorization") or {}
+    if isinstance(fac, dict):
+        if fac.get("R_content") and not fac.get("R_ref"):
+            try:
+                data = base64.b64decode(fac["R_content"], validate=True)
+                fac["R_ref"] = upload_bytes(data)
+                fac.pop("R_content", None)
+            except Exception:
+                pass
+        if fac.get("S_content") and not fac.get("S_ref"):
+            try:
+                data = base64.b64decode(fac["S_content"], validate=True)
+                fac["S_ref"] = upload_bytes(data)
+                fac.pop("S_content", None)
+            except Exception:
+                pass
+        payload["factorization"] = fac
     try:
         validate(instance=payload, schema=transport_schema)
     except ValidationError as ve:
@@ -100,11 +161,35 @@ def register_edge(body: TransportEdgeBody) -> Dict[str, Any]:
     EDGE_STORE[edge_id] = payload
 
     # Numeric guardrails
+    # Derive diagnostics from provided inline content if available
+    diag = payload.get("diagnostics", {}) or {}
+    kappa = diag.get("kappa")
+    roundtrip = diag.get("roundtrip")
+    rho = float(diag.get("rho", 0.0))
     try:
-        diag = payload.get("diagnostics", {})
-        kappa = float(diag.get("kappa", 0.0))
-        roundtrip = float(diag.get("roundtrip", 0.0))
-        rho = float(diag.get("rho", 0.0))
+        # If weights_content provided earlier, recompute kappa/roundtrip
+        weights_content = body.__root__.get("U", {}).get("weights_content") if isinstance(body.__root__.get("U", {}), dict) else None
+        inv_content = body.__root__.get("U", {}).get("inverse_content") if isinstance(body.__root__.get("U", {}), dict) else None
+        shape = payload.get("U", {}).get("shape")
+        if weights_content and isinstance(shape, list) and len(shape) == 2:
+            W = np.frombuffer(base64.b64decode(weights_content, validate=True), dtype=np.float32)
+            try:
+                W = W.reshape(shape)
+            except Exception:
+                # fallback: ignore if shape mismatch
+                W = None  # type: ignore
+            if W is not None:
+                kappa = float(np.linalg.cond(W))
+                if inv_content:
+                    Winv = np.frombuffer(base64.b64decode(inv_content, validate=True), dtype=np.float32)
+                    try:
+                        Winv = Winv.reshape((shape[1], shape[0]))
+                        I = np.eye(shape[1])
+                        roundtrip = float(np.linalg.norm(Winv @ W - I, ord='fro') / np.sqrt(I.size))
+                    except Exception:
+                        pass
+        kappa = float(kappa) if kappa is not None else 0.0
+        roundtrip = float(roundtrip) if roundtrip is not None else 0.0
     except Exception as exc:  # pragma: no cover
         raise HTTPException(status_code=400, detail="invalid diagnostics values") from exc
 
