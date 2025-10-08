@@ -4,4 +4,7 @@ pydantic==2.9.2
 prometheus-client==0.21.0
 requests==2.32.3
 boto3==1.34.162
+SQLAlchemy==2.0.34
+psycopg[binary,pool]==3.2.1
+redis==5.0.7
 

@@ -15,6 +15,33 @@ POST /edges
 }
 ```
 ---
+## Register a transport edge with inline artifacts (base64)
+POST /edges
+```json
+{
+  "edge_id": "quant->pm@1.1.0",
+  "src": "agent:quant",
+  "dst": "agent:pm",
+  "k_space_id": "K/v0",
+  "edge_type": "linear",
+  "U": {
+    "shape": [64,64],
+    "weights_content": "<base64-bytes>",
+    "inverse_content": "<base64-bytes>"
+  },
+  "factorization": {
+    "method": "polar",
+    "R_content": "<base64-bytes>",
+    "S_content": "<base64-bytes>",
+    "residual": 0.004
+  },
+  "unit_map": {"in":"zscore","out":"weights"},
+  "diagnostics": {"kappa":120.0,"roundtrip":0.011,"rho":0.0},
+  "signatures": ["dsu:HeadOfRisk:dev","dsu:PolicyLead:dev"]
+}
+```
+The registry will store the blobs in object storage, replace `*_content` with `*_ref` (sha256), DSU‑sign refs, and persist metadata.
+---
 ## Run a loop
 POST /run
 ```json
@@ -38,5 +65,15 @@ POST /run
   "dim":64,
   "timestamp":"2025-10-07T15:02:11Z"
 }
+```
+---
+## Presign artifact for download
+POST /artifacts/presign
+```json
+{"artifact_ref": "sha256:..."}
+```
+Response:
+```json
+{"url": "https://minio/...", "expires_s": 900}
 ```
 ---

@@ -17,6 +17,10 @@ services:
       MINIO_ROOT_PASSWORD: ${OBJECT_STORE_SECRET_KEY}
     ports: ["9000:9000","9001:9001"]
 
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
   transport-registry:
     build: ./services/transport-registry
     environment: [PGHOST,PGUSER,PGPASSWORD,PGDATABASE,PGPORT,OBJECT_STORE_ENDPOINT,OBJECT_STORE_BUCKET,DSU_SIGNER_BASE]
@@ -27,15 +31,19 @@ services:
 
   holonomy-engine:
     build: ./services/holonomy-engine
+    environment:
+      - EVENT_BUS_URL=redis://redis:6379/0
     volumes:
       - ../libs/edg_numerics:/opt/edg_numerics:ro
     ports: ["${HOLONOMY_ENGINE_PORT}:8080"]
-    depends_on: [transport-registry]
+    depends_on: [transport-registry, redis]
 
   loop-registry:
     build: ./services/loop-registry
+    environment:
+      - EVENT_BUS_URL=redis://redis:6379/0
     ports: ["${LOOP_REGISTRY_PORT}:8080"]
-    depends_on: [postgres]
+    depends_on: [postgres, redis]
 
   residual-service:
     build: ./services/residual-service

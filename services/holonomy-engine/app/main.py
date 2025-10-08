@@ -17,6 +17,7 @@ from edg_numerics import (
     rotation_angle_norm_from_log,
 )
 from jsonschema import validate as js_validate, ValidationError as JSValidationError
+import redis
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -66,6 +67,7 @@ REL_LOG_PER_DIM = float(os.getenv("IV_REL_LOG_PER_DIM", "0.005"))
 # Service endpoints
 TR_BASE = os.getenv("TRANSPORT_REGISTRY_BASE", f"http://localhost:{os.getenv('TRANSPORT_REGISTRY_PORT','7001')}")
 LR_BASE = os.getenv("LOOP_REGISTRY_BASE", f"http://localhost:{os.getenv('LOOP_REGISTRY_PORT','7003')}")
+EVENT_BUS_URL = os.getenv("EVENT_BUS_URL")
 
 
 def fetch_loop(loop_id: str) -> Dict[str, Any] | None:
@@ -115,6 +117,17 @@ def fetch_edge_U(edge_id: str) -> np.ndarray | None:
     except Exception:
         return None
     return None
+
+
+def publish_event(stream: str, payload: Dict[str, Any]) -> None:
+    if not EVENT_BUS_URL:
+        return
+    try:
+        r = redis.from_url(EVENT_BUS_URL, decode_responses=True)
+        r.xadd(stream, {"payload": json.dumps(payload)})
+    except Exception:
+        # best-effort; ignore failures
+        pass
 
 
 def identity_metrics(dim: int) -> Dict[str, Any]:
@@ -200,6 +213,7 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
     attribution = [[eid, w] for eid, w in zip(req.edge_ids, weights)]
     # Wilson diagnostics (simple proxies)
     wilson_trace = float(np.trace(L))
+    log_fro = float(np.linalg.norm(L, 'fro'))
     result = {
         "loop_id": req.loop_id,
         "H_ref": "sha256:H_mock",
@@ -212,6 +226,7 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
         "dim": dim,
         "timestamp": "2025-10-07T15:02:11Z",
         "regime_tag": regime_tag,
+        "log_fro": log_fro,
     }
     # Schema validation before emitting
     try:
@@ -231,6 +246,13 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
     g_curv.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(result["curvature_fro"])
     g_tors.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(result["torsion_fro"])
     g_close.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(result["closure_norm"])
+    # Emit loop.run.completed (best-effort internal event)
+    try:
+        requests.post(f"{LR_BASE}/events/loop_run_completed", json=result, timeout=1.5)
+    except Exception:
+        pass
+    # Publish to event bus (best-effort)
+    publish_event("loop.run.completed", result)
     return result
 
 

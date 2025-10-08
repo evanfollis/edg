@@ -69,6 +69,11 @@ g_edge_rho = Gauge(
     labelnames=("edge_id",),
     registry=REGISTRY,
 )
+g_presign = Gauge(
+    "artifact_presign_total",
+    "Count of artifact presign requests",
+    registry=REGISTRY,
+)
 
 
 @app.post("/edges", status_code=status.HTTP_201_CREATED)
@@ -243,6 +248,33 @@ def healthz() -> Response:
 def metrics() -> Response:
     data = generate_latest(REGISTRY)
     return Response(content=data, media_type=CONTENT_TYPE_LATEST)
+
+
+@app.post("/artifacts/presign")
+def presign_artifact(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a presigned GET URL for an artifact_ref (sha256:...)."""
+    ref = body.get("artifact_ref")
+    if not isinstance(ref, str) or not ref.startswith("sha256:"):
+        raise HTTPException(status_code=400, detail="invalid artifact_ref")
+    key = ref.split(":", 1)[1]
+    expires_s = int(os.getenv("PRESIGN_EXPIRES_S", "900"))
+    try:
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=os.getenv("OBJECT_STORE_ENDPOINT", "http://localhost:9000"),
+            aws_access_key_id=os.getenv("OBJECT_STORE_ACCESS_KEY", "minioadmin"),
+            aws_secret_access_key=os.getenv("OBJECT_STORE_SECRET_KEY", "minioadmin"),
+        )
+        bucket = os.getenv("OBJECT_STORE_BUCKET", "edg-artifacts")
+        url = s3.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": bucket, "Key": key},
+            ExpiresIn=expires_s,
+        )
+        g_presign.inc()
+        return {"url": url, "expires_s": expires_s}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="object store unavailable") from exc
 
 
 # ---- Persistence (Postgres) ----
