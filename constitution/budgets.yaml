@@ -1,3 +1,10 @@
+version: 2025.10
+residual_budgets:
+  default:
+    epsilon: 0.05
+loop_loss:
+  default:
+    eta: 0.10
 # Declarative budget caps used by CI and dashboards; not runtime blocking.
 version: "2025.10"
 last_updated: "2025-10-08"

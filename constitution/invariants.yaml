@@ -1,3 +1,14 @@
+version: 2025.10
+invariants:
+  - id: INV.RS.COND
+    description: S-factor condition number within cap
+    threshold: ${IV_KAPPA_S_MAX:-100}
+  - id: INV.RESIDUAL.RHO
+    description: Procrustes residual bound
+    threshold: ${IV_RHO_MAX:-0.01}
+  - id: INV.HOLONOMY.DELTA
+    description: Trust region for log(H)
+    threshold: ${IV_DELTA_MAX:-0.10}
 # Versioned set of epistemic + governance invariants mirrored from THEORY.md.
 version: "2025.10"
 last_updated: "2025-10-08"

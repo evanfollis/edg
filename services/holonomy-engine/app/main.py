@@ -16,6 +16,7 @@ from edg_numerics import (
     curvature_torsion_closure_from_log,
     rotation_angle_norm_from_log,
 )
+from jsonschema import validate as js_validate, ValidationError as JSValidationError
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -209,6 +210,21 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
         "timestamp": "2025-10-07T15:02:11Z",
         "regime_tag": regime_tag,
     }
+    # Schema validation before emitting
+    try:
+        js_validate(instance=result, schema=holonomy_schema)
+    except JSValidationError as ve:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "IV.SCHEMA.VALIDATION",
+                    "message": "Holonomy result schema validation failed.",
+                    "detail": {"path": list(ve.absolute_path), "msg": ve.message},
+                }
+            },
+        ) from ve
+
     g_curv.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(result["curvature_fro"])
     g_tors.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(result["torsion_fro"])
     g_close.labels(loop_id=req.loop_id, regime_tag=regime_tag).set(result["closure_norm"])

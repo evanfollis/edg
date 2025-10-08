@@ -22,6 +22,37 @@ def stable_logm(H: np.ndarray, delta_max: float) -> np.ndarray:
     raise ValueError("Trust region violated; segment loop before log.")
 
 
+def trust_region(H: np.ndarray, delta_max: float) -> bool:
+    """Alias for is_near_identity; explicit API per PR-2."""
+    return is_near_identity(H, delta_max)
+
+
+def segment_loop(edge_mats: list[np.ndarray], delta_max: float) -> list[list[np.ndarray]]:
+    """Greedy segmentation: split sequence so each segment product stays in trust region.
+
+    Returns list of segments (each a list of matrices). Minimal placeholder strategy.
+    """
+    segments: list[list[np.ndarray]] = []
+    current: list[np.ndarray] = []
+    acc: Optional[np.ndarray] = None
+    for U in edge_mats:
+        if acc is None:
+            acc = U.copy()
+            current = [U]
+        else:
+            candidate = U @ acc
+            if is_near_identity(candidate, delta_max):
+                acc = candidate
+                current.append(U)
+            else:
+                segments.append(current)
+                acc = U.copy()
+                current = [U]
+    if current:
+        segments.append(current)
+    return segments
+
+
 def roundtrip_distortion(U: np.ndarray, U_inv_approx: np.ndarray) -> float:
     """Validation round-trip distortion: ||U_inv U − I||_F / sqrt(N)."""
     I = np.eye(U.shape[1])
