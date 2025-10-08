@@ -1,0 +1,57 @@
+# Declarative budget caps used by CI and dashboards; not runtime blocking.
+version: "2025.10"
+last_updated: "2025-10-08"
+
+lens_flow:
+  # Max optimization steps and allowable objective reduction per window (avoid over-regularization).
+  max_steps_per_iteration: 10
+  min_relative_loop_loss_drop: 0.02     # require ≥2% improvement to accept a step
+  max_curvature_mode_variance_drop: 0.10 # guardrail to avoid erasing stable curvature
+  report_pre_post_curvature_norm: true
+  regime_scope:
+    train: ["base", "steady"]
+    validate: ["stress", "event"]
+
+translators:
+  # Residual budgets for translator fits Tij by data domain.
+  default:
+    rho_max: 0.01
+    kappa_max: 500.0
+  news_policy:
+    rho_max: 0.015
+    kappa_max: 600.0
+  fundamental:
+    rho_max: 0.008
+    kappa_max: 450.0
+
+holonomy:
+  delta_max: 0.10          # trust region for log(Hγ)
+  max_segments_per_loop: 8 # CI warns if exceeded; engine may segment more at runtime
+  branch_continuity_theta_max: 0.05
+
+diagnostics:
+  wilson_coverage_min: 0.80
+  top_k_curvature_modes: 5
+
+governance:
+  dsu_quorum:
+    tier1_changes: "3-of-4"
+    tier2_changes: "3-of-4"
+    break_glass: "2-of-2 (HeadOfRisk, ModelRiskOfficer) — revert only"
+  constitution_version: "2025.10"
+  seam_review:
+    frequency: "per-milestone"
+    outputs:
+      - "violations_summary.md"
+      - "regime_breach_heatmap.png"
+
+observability:
+  event_payload_include:
+    - "constitution_version"
+    - "invariants"
+    - "violations"
+  dashboards:
+    panels:
+      - "Epistemic Health (breach counts & trends)"
+      - "Curvature/Torsion Heatmap"
+      - "Loop Loss Quantiles by Regime"

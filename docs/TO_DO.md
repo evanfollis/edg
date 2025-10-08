@@ -1,6 +1,9 @@
 # Ironvest v1.1 — Engineering TODO (PR-1..PR-6)
-Purpose: smallest decisive PRs to make the platform end-to-end executable with audit-safe numerics.  
-Each PR includes scope, owner(s), acceptance tests, and links to specs.
+
+**Purpose:**
+Smallest decisive PRs to make the platform end-to-end executable with audit-safe numerics.
+Each PR includes scope, owner(s), acceptance tests, and references.
+A **Constitutional Track** runs in parallel—adding reversible declarations (invariants, budgets, governance payloads) that ensure future alignment with *THEORY.md*.
 
 ---
 
@@ -20,6 +23,12 @@ Each PR includes scope, owner(s), acceptance tests, and links to specs.
 - Any incompatible change fails CI with `IV.SCHEMA.VALIDATION`.
 
 **References**: `specs/K_v0_metric_spec.md` §4, `services/*/openapi.yaml`, `ci/tests/test_edges_and_loops.py`.
+
+**Constitutional hook (non-blocking)**
+* Scaffold `/constitution/` directory:
+  * `invariants.yaml`, `budgets.yaml`, and `/violations/` (git-ignored).
+  * Add stub CI test `ci/tests/test_theory_alignment.py` asserting folder existence.
+  * Comment header: *“Holds declarative invariants & budgets mirrored from THEORY.md.”*
 
 ---
 
@@ -41,6 +50,15 @@ Each PR includes scope, owner(s), acceptance tests, and links to specs.
 
 **References**: `ci/tests/test_edges_and_loops.py`, `specs/K_v0_metric_spec.md` §4–5.
 
+**References:**
+`ci/tests/test_edges_and_loops.py`, `specs/K_v0_metric_spec.md` §4–5.
+
+**Constitutional hook**
+* Populate first Tier-1 invariants in `/constitution/invariants.yaml`:
+  * `INV.RS.COND`, `INV.RESIDUAL.RHO`, `INV.HOLONOMY.DELTA`.
+* Thresholds mirrored from constants in `edg_numerics/`.
+* CI writes any breaches to `/constitution/violations/` (non-fatal).
+
 ---
 
 ## PR-3 — Holonomy Engine v0
@@ -60,6 +78,18 @@ Each PR includes scope, owner(s), acceptance tests, and links to specs.
 
 **References**: `services/holonomy-engine/openapi.yaml`, `loop-registry/gold_loops.yaml`.
 
+**Constitutional hook**
+* Extend event payloads with optional governance block:
+  ```json
+  {
+    "constitution_version": "2025.10",
+    "invariants": [],
+    "violations": []
+  }
+  ```
+* Log `constitution_version` even if arrays are empty.
+* Begin emitting `goldloop.breach` on invariant violation (non-blocking).
+
 ---
 
 ## PR-4 — Residual Service v0 (T_ij with R/S)
@@ -76,6 +106,11 @@ Each PR includes scope, owner(s), acceptance tests, and links to specs.
 
 **References**: `services/residual-service/openapi.yaml`, `contracts/schemas/translator_Tij.schema.json`.
 
+**Constitutional hook**
+* Add symbolic A★ + Π objective (quadratic in log-space).
+* Record `loop_loss`, `residual_budget_used`, `holonomy_deviation`.
+* Update `/constitution/budgets.yaml` with per-domain residual budgets.
+
 ---
 
 ## PR-5 — Wilson diagnostics & G-checks (hooks)
@@ -91,6 +126,12 @@ Each PR includes scope, owner(s), acceptance tests, and links to specs.
 - CI includes a basic g-compatibility check when G≠I is configured.
 
 **References**: `specs/K_v0_metric_spec.md` §4.4–4.5, `docs/OBSERVABILITY.md`.
+
+**Constitutional hook**
+* Expand `/constitution/invariants.yaml` with:
+  * `INV.METRIC.G.CONSISTENCY`, `INV.WILSON.COVERAGE`, `INV.CURVATURE.MODE.STABILITY`.
+* Add `ci/tests/test_metric_consistency.py` (warn only).
+* Dashboard: “Epistemic Health” panel showing invariant-breach counts.
 
 ---
 
@@ -111,10 +152,33 @@ Each PR includes scope, owner(s), acceptance tests, and links to specs.
 
 **References**: `services/lens-flow/openapi.yaml`, `constitution/CONSTITUTION.yaml` (`pi_governance`).
 
+**Constitutional hook**
+* Introduce `/constitution/budgets.yaml` ledger:
+  * Loop-loss, curvature-variance, and iteration caps.
+* CI writes summary of budget usage per regime (warn-only).
+* Lens-flow events include governance payload w/ budget id.
+
 ---
 
 ## Guardrails (unchanged)
 - Gold loops = Sev-1 gates (auto-revert, freeze Tier-1/2, thaw after 5 greens).
 - DSU signatures required per tier in `GOVERNANCE.md`.
 - Observability tags: include `loop_id`, `regime_tag`, `edge_id`, `dsu_ids` across logs/metrics/traces.
+- CI may emit constitutional breach reports but never block runtime until Post-v1.1 review.
 
+---
+
+## Post-v1.1 Constitutional Hardening
+
+* Populate all invariants mirrored from *THEORY.md*.
+* Finalize `test_theory_alignment.py` (diff THEORY.md ↔ invariants.yaml).
+* Run first “Seam Review”: summarize breaches & budget usage by regime.
+* Promote persistent invariants to blocking in v1.2.
+
+---
+
+**Guiding principle:**
+
+> “Continue shipping operational features.
+> Record every epistemic promise as data, not doctrine.”
+> *Declare → Observe → Enforce.*

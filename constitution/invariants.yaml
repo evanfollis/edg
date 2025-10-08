@@ -1,0 +1,147 @@
+# Versioned set of epistemic + governance invariants mirrored from THEORY.md.
+version: "2025.10"
+last_updated: "2025-10-08"
+owners:
+  - role: HeadOfRisk
+  - role: ModelRiskOfficer
+  - role: HeadQuant
+  - role: PolicyLead
+
+tiers:
+  # Tier-1: Numerics & geometric trust conditions (break-the-build in CI if violated)
+  - name: Tier-1
+    description: "Numerical stability and geometric trust-region invariants."
+    invariants:
+      - id: INV.RS.COND
+        target: transport_registry
+        metric: condition_number_kappa
+        threshold: {"lte": 500.0}
+        scope: ["edge_factorization"]
+        severity: 1
+        measure: "kappa(U_e) from factorization; method in {polar, procrustes, tikhonov, g-polar}"
+        enforcement: "CI: ci/tests/test_edges_and_loops.py"
+        on_breach:
+          emit: ["goldloop.breach"]
+          write_violation_json: true
+        rationale: "Keeps R/S separation meaningful; prevents degenerate reframing."
+        owner: HeadQuant
+
+      - id: INV.RESIDUAL.RHO
+        target: residual_service
+        metric: procrustes_residual_rho
+        threshold: {"lte": 0.01}
+        scope: ["translator_fit"]
+        severity: 1
+        measure: "||UA - B|| / ||B|| for orthogonal Procrustes"
+        enforcement: "CI"
+        on_breach:
+          emit: ["goldloop.breach"]
+          write_violation_json: true
+        rationale: "Ensures translator fits are within admissible residual budgets."
+        owner: HeadQuant
+
+      - id: INV.HOLONOMY.DELTA
+        target: holonomy_engine
+        metric: spectral_norm_H_minus_I
+        threshold: {"lte": 0.1}
+        scope: ["loop_trust_region"]
+        severity: 1
+        measure: "||H_γ - I||_2; segment loop if > δ"
+        enforcement: "CI + runtime segmentation (non-blocking)"
+        on_breach:
+          emit: ["loop.segmented", "goldloop.breach"]
+          write_violation_json: true
+        rationale: "Matrix log well-defined in trust region; guarantees branch stability."
+        owner: HeadOfRisk
+
+      - id: INV.LOG.BRANCH.CONTINUITY
+        target: holonomy_engine
+        metric: incremental_log_jump_theta
+        threshold: {"lte": 0.05}
+        scope: ["log_branch_selection"]
+        severity: 1
+        measure: "min Δ angle between successive logs along temporal updates"
+        enforcement: "CI"
+        on_breach:
+          emit: ["holonomy.branch_warning"]
+          write_violation_json: true
+        rationale: "Avoids artificial curvature from branch flips."
+        owner: ModelRiskOfficer
+
+  # Tier-2: Governance, metric consistency, and diagnostic integrity (warn + track)
+  - name: Tier-2
+    description: "Constitutional governance, metric audits, and diagnostic completeness."
+    invariants:
+      - id: INV.METRIC.G.CONSISTENCY
+        target: transport_registry
+        metric: metric_change_declared
+        threshold: {"equals": true}
+        scope: ["metric_switch", "g_polar_use"]
+        severity: 2
+        measure: "Metric G changes must be declared with C s.t. C^T C = G; store in ledger"
+        enforcement: "CI (warning), dashboard panel"
+        on_breach:
+          emit: ["metric.audit.required"]
+          write_violation_json: true
+        rationale: "Tracks non-Euclidean transitions; preserves reproducibility."
+        owner: ModelRiskOfficer
+
+      - id: INV.WILSON.COVERAGE
+        target: loop_registry
+        metric: wilson_loop_coverage_ratio
+        threshold: {"gte": 0.8}
+        scope: ["gold_loops", "canonical_loops"]
+        severity: 2
+        measure: "Fraction of canonical loops with Wilson diagnostics computed"
+        enforcement: "CI (warning), dashboard"
+        on_breach:
+          emit: ["diagnostics.coverage.shortfall"]
+          write_violation_json: true
+        rationale: "Ensures curvature assessment isn’t cherry-picked."
+        owner: HeadOfRisk
+
+      - id: INV.CURVATURE.MODE.STABILITY
+        target: dashboard_api
+        metric: curvature_mode_variance_delta
+        threshold: {"lte": 0.1}
+        scope: ["across_lenses", "across_regimes"]
+        severity: 2
+        measure: "Δ variance of top-k curvature modes pre/post lens-flow"
+        enforcement: "CI (warning), dashboard"
+        on_breach:
+          emit: ["lensflow.regularization.audit"]
+          write_violation_json: true
+        rationale: "Lens-flow must reduce spurious curvature without erasing stable modes."
+        owner: HeadQuant
+
+      - id: INV.DSU.QUORUM.TIER12
+        target: dsu_signer
+        metric: quorum_met
+        threshold: {"equals": true}
+        scope: ["tier1_changes", "tier2_changes"]
+        severity: 2
+        measure: "3-of-4 quorum for Tier-1/2; 2-of-2 break-glass allowed only for revert"
+        enforcement: "CI (warning) + deployment gate"
+        on_breach:
+          emit: ["governance.quorum.failed"]
+          write_violation_json: true
+        rationale: "Prevents silent policy drift on critical artifacts."
+        owner: PolicyLead
+
+  # Tier-3: Documentation alignment (Theory ↔ Repo)
+  - name: Tier-3
+    description: "Doc/code coherence; zero runtime impact."
+    invariants:
+      - id: INV.THEORY.ALIGNMENT
+        target: repo_docs
+        metric: theory_diff_clean
+        threshold: {"equals": true}
+        scope: ["THEORY.md", "/constitution/invariants.yaml"]
+        severity: 3
+        measure: "Hash-based diff of formal statements & bounds"
+        enforcement: "CI (doc test)"
+        on_breach:
+          emit: ["theory.alignment.todo"]
+          write_violation_json: true
+        rationale: "Prevents silent divergence between math and code constraints."
+        owner: PolicyLead
