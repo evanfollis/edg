@@ -198,12 +198,15 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
     # Generic: produce small random-ish stable values
     weights = [1.0 / max(len(req.edge_ids), 1)] * len(req.edge_ids)
     attribution = [[eid, w] for eid, w in zip(req.edge_ids, weights)]
+    # Wilson diagnostics (simple proxies)
+    wilson_trace = float(np.trace(L))
     result = {
         "loop_id": req.loop_id,
         "H_ref": "sha256:H_mock",
         "curvature_fro": metrics["curvature_fro"],
         "torsion_fro": metrics["torsion_fro"],
         "closure_norm": metrics["closure_norm"],
+        "wilson_trace": wilson_trace,
         "edge_attribution": attribution,
         "segments": 1,
         "dim": dim,

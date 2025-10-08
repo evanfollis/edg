@@ -19,12 +19,16 @@ services:
 
   transport-registry:
     build: ./services/transport-registry
-    environment: [PGHOST,PGUSER,PGPASSWORD,PGDATABASE,PGPORT,OBJECT_STORE_ENDPOINT,OBJECT_STORE_BUCKET]
+    environment: [PGHOST,PGUSER,PGPASSWORD,PGDATABASE,PGPORT,OBJECT_STORE_ENDPOINT,OBJECT_STORE_BUCKET,DSU_SIGNER_BASE]
+    volumes:
+      - ../libs/edg_numerics:/opt/edg_numerics:ro
     ports: ["${TRANSPORT_REGISTRY_PORT}:8080"]
     depends_on: [postgres, minio]
 
   holonomy-engine:
     build: ./services/holonomy-engine
+    volumes:
+      - ../libs/edg_numerics:/opt/edg_numerics:ro
     ports: ["${HOLONOMY_ENGINE_PORT}:8080"]
     depends_on: [transport-registry]
 
@@ -35,6 +39,8 @@ services:
 
   residual-service:
     build: ./services/residual-service
+    volumes:
+      - ../libs/edg_numerics:/opt/edg_numerics:ro
     ports: ["${RESIDUAL_SERVICE_PORT}:8080"]
     depends_on: [transport-registry]
 

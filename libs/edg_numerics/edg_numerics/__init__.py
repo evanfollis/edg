@@ -6,7 +6,12 @@ from .metrics import (
     rotation_angle_norm_from_log,
 )
 from .holonomy import loop_holonomy, curvature_torsion_closure_from_log
-from .factorize import factor_edge_polar
+from .factorize import (
+    factor_edge_polar,
+    factor_edge_procrustes,
+    factor_edge_tikhonov_procrustes,
+    factor_edge_g_polar,
+)
 
 __all__ = [
     "is_near_identity",
@@ -17,6 +22,9 @@ __all__ = [
     "loop_holonomy",
     "curvature_torsion_closure_from_log",
     "factor_edge_polar",
+    "factor_edge_procrustes",
+    "factor_edge_tikhonov_procrustes",
+    "factor_edge_g_polar",
 ]
 
 

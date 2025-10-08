@@ -3,4 +3,7 @@ uvicorn[standard]==0.30.6
 jsonschema==4.23.0
 pydantic==2.9.2
 prometheus-client==0.21.0
+SQLAlchemy==2.0.34
+psycopg[binary,pool]==3.2.1
+requests==2.32.3
 
