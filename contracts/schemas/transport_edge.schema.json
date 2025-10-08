@@ -67,6 +67,5 @@
     "oos_torsion_proof": {"$ref": "./nonlinear_waiver.schema.json"},
     "signatures": {"type": "array", "items": {"type": "string"}}
   }
-  
 }
   
