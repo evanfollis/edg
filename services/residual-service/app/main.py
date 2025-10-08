@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from fastapi import Response
+from prometheus_client import CollectorRegistry, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -16,6 +18,14 @@ class ResidualsRequest(BaseModel):
 
 
 app = FastAPI(title="Residual Service", version="1.1.0")
+
+REGISTRY = CollectorRegistry()
+g_resid = Gauge(
+    "residual_norm",
+    "Residual norm between agents",
+    labelnames=("agent_i", "agent_j", "regime_tag"),
+    registry=REGISTRY,
+)
 
 
 @app.post("/residuals")
@@ -36,5 +46,11 @@ def residuals(req: ResidualsRequest) -> Dict[str, Any]:
             "regime_tag": req.regime_tag or "default",
         },
     }
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    data = generate_latest(REGISTRY)
+    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
 

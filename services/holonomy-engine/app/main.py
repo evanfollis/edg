@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List
 
 import numpy as np
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
+from prometheus_client import CollectorRegistry, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -28,6 +30,30 @@ class RunRequest(BaseModel):
 
 
 app = FastAPI(title="Holonomy Engine", version="1.0.0")
+REGISTRY = CollectorRegistry()
+g_curv = Gauge(
+    "holonomy_curvature_fro",
+    "Curvature Frobenius norm",
+    labelnames=("loop_id", "regime_tag"),
+    registry=REGISTRY,
+)
+g_tors = Gauge(
+    "holonomy_torsion_fro",
+    "Torsion Frobenius norm",
+    labelnames=("loop_id", "regime_tag"),
+    registry=REGISTRY,
+)
+g_close = Gauge(
+    "holonomy_closure_norm",
+    "Closure norm",
+    labelnames=("loop_id", "regime_tag"),
+    registry=REGISTRY,
+)
+
+# Trust-region caps from env (aligned with CI defaults)
+DELTA_MAX = float(os.getenv("IV_DELTA_MAX", "0.10"))
+THETA_MAX = float(os.getenv("IV_THETA_MAX", "0.50"))
+REL_LOG_PER_DIM = float(os.getenv("IV_REL_LOG_PER_DIM", "0.005"))
 
 
 def identity_metrics(dim: int) -> Dict[str, Any]:
@@ -53,6 +79,9 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
             "edge_attribution": [[req.edge_ids[0], 0.5], [req.edge_ids[1], 0.5]],
             "timestamp": "2025-10-07T15:02:11Z",
         }
+        g_curv.labels(loop_id=req.loop_id, regime_tag="identity").set(metrics["curvature_fro"])
+        g_tors.labels(loop_id=req.loop_id, regime_tag="identity").set(metrics["torsion_fro"])
+        g_close.labels(loop_id=req.loop_id, regime_tag="identity").set(metrics["closure_norm"])
         return result
 
     # Generic: produce small random-ish stable values
@@ -73,6 +102,15 @@ def run_loop(req: RunRequest) -> Dict[str, Any]:
         "dim": 64,
         "timestamp": "2025-10-07T15:02:11Z",
     }
+    g_curv.labels(loop_id=req.loop_id, regime_tag="default").set(curvature)
+    g_tors.labels(loop_id=req.loop_id, regime_tag="default").set(torsion)
+    g_close.labels(loop_id=req.loop_id, regime_tag="default").set(closure)
     return result
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    data = generate_latest(REGISTRY)
+    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
 
